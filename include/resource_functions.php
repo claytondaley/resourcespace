@@ -3196,6 +3196,29 @@ function update_related_resource($ref,$related,$add=true)
 		}
 	return true;
 	}
-	
+
+function user_resource_delete($delete) {
+    # D (on by default) prevents delete resources
+    if (checkperm("D")) {
+        # User doesn't have permission to delete any resources
+        return false;
+    }
+
+    $c = get_collection($delete);
+    # e<n> is provides edit access to a resource in the stage indicated by <n> (-2 through 3)
+    if (checkperm("e" . $c["archive"])) {
+        # User does not have permission to edit (delete) resources in this stage
+        return false;
+    }
+
+    if (!function_exists("delete_resource")) {
+        include "../../../include/resource_functions.php";
+    }
+    delete_resource($c["ref"]);
+
+    # Assume it worked
+    return true;
+}
+
 
 

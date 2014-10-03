@@ -1,10 +1,10 @@
 <?php
-include "../include/db.php";
-include "../include/authenticate.php"; #if (!checkperm("s")) {exit ("Permission denied.");}
-include "../include/general.php";
-include "../include/collections_functions.php";
-include "../include/resource_functions.php";
-include "../include/search_functions.php"; 
+include_once "../include/db.php";
+include_once "../include/authenticate.php"; #if (!checkperm("s")) {exit ("Permission denied.");}
+include_once "../include/general.php";
+include_once "../include/collections_functions.php";
+include_once "../include/resource_functions.php";
+include_once "../include/search_functions.php";
 
 $ref=getvalescaped("ref","",true);
 $copycollectionremoveall=getvalescaped("copycollectionremoveall","");
@@ -16,13 +16,12 @@ $sort=getval("sort","ASC");
 # Does this user have edit access to collections? Variable will be found in functions below.  
 $multi_edit=allow_multi_edit($ref);
 
-
 # Fetch collection data
 $collection=get_collection($ref);if ($collection===false) {
 	$error=$lang['error-collectionnotfound'];
 	error_alert($error);
 	exit();
-	}
+}
 $resources=do_search("!collection".$ref);
 $colcount=count($resources);
 
@@ -34,7 +33,8 @@ if ($copy!="")
 	refresh_collection_frame();
 	}
 
-if (getval("submitted","")!="")
+$submitted = getval("submitted","");
+if ($submitted!="")
 	{
 	# Save collection data
 	save_collection($ref);
@@ -42,7 +42,7 @@ if (getval("submitted","")!="")
 		{
 		if (getval("addlevel","")=="yes"){
 			redirect ($baseurl_short."pages/collection_edit.php?ref=".$ref."&addlevel=yes");
-			}		
+			}
 		else if ((getval("theme","")!="") || (getval("newtheme","")!=""))
 			{
 			redirect ($baseurl_short."pages/themes.php?manage=true");
@@ -222,7 +222,7 @@ endif; // hook: overridethemesel
 }
 
 
-if (checkperm("h") && $collection['public']==1)
+if (checkperm("h"))
 	{
 	# Option to publish to the home page.
 	?>

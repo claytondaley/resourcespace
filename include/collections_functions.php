@@ -1,6 +1,9 @@
 <?php
 # Collections functions
 # Functions to manipulate collections
+include_once "db.php";
+include_once "authenticate.php";
+include_once "general.php";
 
 if (!function_exists("get_user_collections")){
 function get_user_collections($user,$find="",$order_by="name",$sort="ASC",$fetchrows=-1,$auto_create=true)
@@ -1788,7 +1791,243 @@ function show_hide_collection($colref, $show=true, $user="")
 		}
 	sql_query("update user set hidden_collections ='" . implode(",",$hidden_collections) . "' where ref='$user'");
 	}
-	
-	
 
-	
+
+# User_ functions enforce permissions
+function user_collection_create($name) {
+    global $collection_allow_creation, $userref;
+    if (!$collection_allow_creation) {
+        # Not permitted
+        return false;
+    }
+
+    # Create new collection
+    $new = create_collection($userref,$name);
+
+    # Log this
+    daily_stat("New collection", $userref);
+
+    return $new;
+}
+
+# Migrated from $delete, $purge, $deleteall
+function user_collection_delete($delete) {
+    global $userref;
+    $c = get_collection($delete);
+    if ($c['cant_delete'] != 1) {
+        # Collection may not be deleted
+        return false;
+    }
+    if ($c['user'] == $userref) {
+        # User doesn't own collection
+        return false;
+    }
+
+    # Delete collection
+    delete_collection($delete);
+
+    # Assume it worked
+    return true;
+}
+
+function user_collection_empty_delete() {
+    global $userref;
+    $collections=user_get_collections($userref);
+
+    # Update if we successfully delete something
+    $refresh = false;
+
+    for ($n = 0; $n < count($collections); $n++) {
+        # if count is zero:
+        if ($collections[$n]['count'] == 0) {
+            # user_ functions are all permissions safe,
+            # Will automatically check for collection is owned by user and not cant_delete (My Collection)
+            $refresh = user_collection_delete($collections[$n]['ref']) || $refresh;
+        }
+    }
+
+    return $refresh;
+}
+
+function user_collection_add($add) {
+    global $userref;
+    # Check permissions
+    $c = get_collection($add);
+    if (!$c['public']) {
+        # Not a public collection, permission needs to be granted by a user with edit access
+        return false;
+    }
+
+    # Add the collection
+    add_collection($userref,$add);
+    set_user_collection($userref,$add);
+
+    # Log this
+    daily_stat("Add public collection",$userref);
+
+    # Assume it worked
+    return true;
+}
+
+function user_collection_remove($collection) {
+    global $userref;
+    remove_collection($userref,$collection);
+
+    # Assume it worked
+    return true;
+};
+
+function user_collection_resources_remove($collection, $resources = '') {
+    global $userref;
+    # Check permissions
+    $c = get_collection($collection);
+    if ($c['user'] <> $userref && $c['allow_changes'] <> 1 ) {
+        # Doesn't own the collection and collection doesn't permit others to change
+        return false;
+    }
+
+    $query = "delete from collection_resource where collection='$collection'";
+    # Assume all resources by default
+    # If $resources is provided (list, integer, or string), then use to filter query
+    if ($resources) {
+        if (is_array($resources)) {
+            $vals = "'" . implode ("','", $resources) . "'";
+            $query .= " and resource in ($vals)";
+        } else {
+            $query .= " and resource ='$resources'";
+        }
+    }
+
+    # Run the query
+    sql_query($query);
+
+    # Log action
+    collection_log($collection,"R",0);
+
+    # Assume it worked
+    return true;
+}
+
+# Migrated from $purge, $deleteall
+function user_collection_resources_delete($deletecollection) {
+    # Shortcut permissions check
+    # D (on by default) prevents delete resources
+    if (checkperm("D")) {
+        # User doesn't have permission to delete items
+        return false;
+    }
+
+    # Delete all resources in collection
+    if (!function_exists("do_search")) {
+        include "../../../include/search_functions.php";
+    }
+
+    if (!function_exists("delete_resource")) {
+        include "../../../include/resource_functions.php";
+    }
+
+    $resources=do_search("!collection" . $deletecollection);
+    for ($n=0;$n<count($resources);$n++) {
+        # Delete resource
+        user_resource_delete($resources[$n]["ref"]);
+        # Log deletion
+        collection_log($deletecollection,"D",$resources[$n]["ref"]);
+    }
+
+    # Assume it worked
+    return true;
+}
+
+if (!function_exists("user_get_collections")){
+    function user_get_collections($user,$find="",$order_by="name",$sort="ASC",$hide_mycollections=true)
+    {
+        # Returns a list of user collections.
+        $sql="";
+        $keysql="";
+        if ($find=="!shared")
+        {
+            # only return shared collections
+            $sql=" where (public='1'
+				or c.ref in (select distinct collection
+							from user_collection
+							where user<>'$user'
+						union
+							select distinct collection
+							from external_access_keys))";
+        }
+        elseif (strlen($find)==1 && !is_numeric($find))
+        {
+            # A-Z search
+            $sql=" where c.name like '$find%'";
+        }
+        elseif (strlen($find)>1 || is_numeric($find))
+        {
+            $keywords=split_keywords($find);
+            $keyrefs=array();
+            $keysql="";
+            for ($n=0;$n<count($keywords);$n++)
+            {
+                $keyref=resolve_keyword($keywords[$n],false);
+                if ($keyref!==false) {$keyrefs[]=$keyref;}
+
+                $keysql.=" join collection_keyword k" . $n . " on k" . $n . ".collection=ref and (k" . $n . ".keyword='$keyref')";
+                //$keysql="or keyword in (" . join (",",$keyrefs) . ")";
+            }
+
+
+            //$sql.="and (c.name rlike '$search' or o.username rlike '$search' or o.fullname rlike '$search' $spcr )";
+        }
+
+        # Include themes in my collections?
+        # Only filter out themes if $themes_in_my_collections is set to false in config.php
+        global $themes_in_my_collections;
+        if (!$themes_in_my_collections)
+        {
+            if (!$sql==""){$sql=" where ";} else {$sql.=" and ";}
+            $sql.=" (length(c.theme)=0 or c.theme is null) ";
+        }
+
+
+        $order_sort="";
+        if ($order_by!="name"){$order_sort=" order by $order_by $sort";}
+
+        $return="
+	select * from (
+		select c.*,o.username,o.fullname,count(r.resource) count
+		from user o
+			join collection c on o.ref=c.user and o.ref='$user'
+			left outer join collection_resource r on c.ref=r.collection
+		$sql group by c.ref
+	union
+		select c.*,o.username,o.fullname,count(r.resource) count
+		from user_collection uc
+			join collection c on uc.collection=c.ref and uc.user='$user' and c.user<>'$user'
+			left outer join collection_resource r on c.ref=r.collection
+			left join user o on c.user=o.ref
+		$sql
+		group by c.ref
+	) clist $keysql group by ref $order_sort";
+
+        # usergroup mediated ownership
+        /*
+        union
+            select c.*,o.username,o.fullname,count(r.resource) count
+            from user_collection uc
+                join collection c on uc.collection=c.ref and uc.user='-$user' and c.user<>'$user'
+                left outer join collection_resource r on c.ref=r.collection
+                left join user o on c.user=o.ref
+            $sql
+            group by c.ref
+        */
+
+        $return=sql_query($return);
+
+        if ($order_by=="name"){
+            if ($sort=="ASC"){usort($return, 'collections_comparator');}
+            else if ($sort=="DESC"){usort($return,'collections_comparator_desc');}
+        }
+
+        return $return;
+    }
+}
+

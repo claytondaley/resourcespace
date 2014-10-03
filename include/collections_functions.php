@@ -2031,7 +2031,7 @@ if (!function_exists("user_get_collections")){
     }
 }
 
-if (!function_exists("user_get_collections")){
+if (!function_exists("user_get_collections_with_thumbs")){
     function user_get_collections_with_thumbs($user,$find="",$order_by="name",$sort="ASC",$hide_mycollections=true)
     {
         # Returns a list of user collections.

@@ -1,6 +1,8 @@
 <?php
 # Collections functions
 # Functions to manipulate collections
+include_once "general.php";
+include_once "collection_manage.php";
 
 if (!function_exists("get_user_collections")){
 function get_user_collections($user,$find="",$order_by="name",$sort="ASC",$fetchrows=-1,$auto_create=true)

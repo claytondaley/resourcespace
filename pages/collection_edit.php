@@ -1,7 +1,6 @@
 <?php
 include_once "../include/db.php";
 include_once "../include/authenticate.php"; #if (!checkperm("s")) {exit ("Permission denied.");}
-include_once "../include/general.php";
 include_once "../include/collections_functions.php";
 include_once "../include/resource_functions.php";
 include_once "../include/search_functions.php";
@@ -222,7 +221,7 @@ endif; // hook: overridethemesel
 }
 
 
-if (checkperm("h"))
+if (checkperm("h") && ($collection_images || $collection['public']==1))
 	{
 	# Option to publish to the home page.
 	?>

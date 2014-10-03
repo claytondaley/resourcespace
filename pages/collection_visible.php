@@ -32,7 +32,7 @@ if (array_key_exists("find",$_POST)) {$offset=0;} # reset page counter when post
 
 hook('customcollectionmanage');
 
-include "../../../include/header.php";
+include "../include/header.php";
 ?>
   <div class="BasicsBox">
     <h2>&nbsp;</h2>

@@ -95,7 +95,7 @@ echo " " . ($mycollcount==1 ? $lang["owned_by_you-1"] : str_replace("%mynumber",
         <table border="0" cellspacing="0" cellpadding="0" class="ListviewStyle">
             <tr class="ListviewTitleStyle">
                 <!-- Graphic -->
-
+                <td class="image">&nbsp;</td>
                 <!-- Name -->
                 <td class="name"><?php if ($col_order_by=="name") {?><span class="Selected"><?php } ?><a href="<?php echo $curr_page ?>?offset=0&col_order_by=name&sort=<?php echo urlencode($revsort)?>&find=<?php echo urlencode($find)?>" onClick="return CentralSpaceLoad(this);"><?php echo $lang["collectionname"]?></a><?php if ($col_order_by=="name") {?><div class="<?php echo urlencode($sort)?>">&nbsp;</div><?php } ?></td>
                 <!-- Owner -->
@@ -111,10 +111,8 @@ echo " " . ($mycollcount==1 ? $lang["owned_by_you-1"] : str_replace("%mynumber",
                 ?>
                 <tr <?php hook("collectionlistrowstyle");?>>
                     <!-- Image -->
-                    <div class="HomePanelPromotedImageWrap">
-                        <div style="padding-top:<?php echo floor((155-$collections[$n]["thumb_height"])/2) ?>px;">
-                            <img class="ImageBorder" src="<?php echo get_resource_path( $collections[$n]["home_page_image"],false,"thm",false) ?>" width="<?php echo  $collections[$n]["thumb_width"] ?>" height="<?php echo $collections[$n]["thumb_height"] ?>" />
-                        </div>
+                    <div style="padding-top:<?php echo floor((155-$collections[$n]["thumb_height"])/2) ?>px;">
+                        <img class="ImageBorder" src="<?php echo get_resource_path( $collections[$n]["home_page_image"],false,"thm",false) ?>" width="<?php echo  $collections[$n]["thumb_width"] ?>" height="<?php echo $collections[$n]["thumb_height"] ?>" />
                     </div>
                     <!-- Name -->
                     <td class="name"><div class="ListTitle">

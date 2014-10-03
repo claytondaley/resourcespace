@@ -40,7 +40,7 @@ include "../include/header.php";
     <p class="tight"><?php echo text("introtext")?></p>
 <?php
 
-$collections=user_get_collections($userref,$find,$col_order_by,$sort);
+$collections=user_get_collections_with_thumbs($userref,$find,$col_order_by,$sort);
 
 $results=count($collections);
 

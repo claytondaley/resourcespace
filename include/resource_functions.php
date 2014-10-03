@@ -1,6 +1,7 @@
 <?php
 # Resource functions
 # Functions to create, edit and index resources
+include_once "general.php";
 
 function create_resource($resource_type,$archive=999,$user=-1)
 	{

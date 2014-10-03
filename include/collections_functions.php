@@ -2085,7 +2085,7 @@ function user_get_collections_with_thumbs($user,$find="",$order_by="name",$sort=
         if ($order_by!="name"){$order_sort=" order by $order_by $sort";}
 
         $return="
-	select a.*, resource.thumb_height,resource.thumb_widthfrom (
+	select clist.*, resource.thumb_height,resource.thumb_widthfrom (
 		select c.*,o.username,o.fullname,count(r.resource) count
 		from user o
 			join collection c on o.ref=c.user and o.ref='$user'
@@ -2098,8 +2098,9 @@ function user_get_collections_with_thumbs($user,$find="",$order_by="name",$sort=
 			left join user o on c.user=o.ref
 		$sql
 		group by c.ref
-	) as a clist $keysql
-    left outer join collection_resource r on a.ref=r.collection
+	) clist
+    left outer join collection_resource r on clist.ref=r.collection
+    $keysql
     group by ref $order_sort";
 
         # usergroup mediated ownership

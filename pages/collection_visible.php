@@ -124,7 +124,6 @@ echo " " . ($mycollcount==1 ? $lang["owned_by_you-1"] : str_replace("%mynumber",
                     <!-- Count -->
                     <td class="count"><?php echo $collections[$n]["count"]?></td>
                     <?php hook("beforecollectiontoolscolumn");?>
-                <?php } ?>
                 </tr>
             <?php
             }

@@ -345,7 +345,7 @@ echo " " . ($mycollcount==1 ? $lang["owned_by_you-1"] : str_replace("%mynumber",
         </div>
     <?php } ?>
 <?php } ?>
-<div class="BasicsBox">
+<?php } ?><div class="BasicsBox">
     <h1><?php echo $lang["view_shared_collections"]?></h1>
     <p><a href="<?php echo $baseurl_short?>pages/view_shares.php" onClick="return CentralSpaceLoad(this,true);">&gt;&nbsp;<?php echo $lang["view_shared_collections"]?></a></p>
 </div>

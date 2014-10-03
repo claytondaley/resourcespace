@@ -111,9 +111,11 @@ echo " " . ($mycollcount==1 ? $lang["owned_by_you-1"] : str_replace("%mynumber",
                 ?>
                 <tr <?php hook("collectionlistrowstyle");?>>
                     <!-- Image -->
+                    <td class="image">
                     <div style="padding-top:<?php echo floor((155-$collections[$n]["thumb_height"])/2) ?>px;">
                         <img class="ImageBorder" src="<?php echo get_resource_path( $collections[$n]["home_page_image"],false,"thm",false) ?>" width="<?php echo  $collections[$n]["thumb_width"] ?>" height="<?php echo $collections[$n]["thumb_height"] ?>" />
                     </div>
+                    </td>
                     <!-- Name -->
                     <td class="name"><div class="ListTitle">
                             <a href="<?php echo $baseurl_short?>pages/search.php?search=<?php echo urlencode("!collection" . $collections[$n]["ref"])?>" onClick="return CentralSpaceLoad(this,true);"><?php echo highlightkeywords(i18n_get_collection_name($collections[$n]),$find)?></a></div></td>

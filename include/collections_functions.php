@@ -2086,13 +2086,13 @@ if (!function_exists("user_get_collections_with_thumbs")){
 
         $return="
 	select clist.*, r.thumb_height, r.thumb_width from (
-		select c.*,o.username,o.fullname,count(r.resource) count, c.home_page_image
+		select c.*,o.username,o.fullname,count(r.resource) count
 		from user o
 			join collection c on o.ref=c.user and o.ref='$user'
 			left outer join collection_resource r on c.ref=r.collection
 		$sql group by c.ref
 	union
-		select c.*,o.username,o.fullname,count(r.resource) count, c.home_page_image
+		select c.*,o.username,o.fullname,count(r.resource) count
 		from user_collection uc
 			join collection c on uc.collection=c.ref and uc.user='$user' and c.user<>'$user'
 			left outer join collection_resource r on c.ref=r.collection

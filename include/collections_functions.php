@@ -1,9 +1,6 @@
 <?php
 # Collections functions
 # Functions to manipulate collections
-include_once "db.php";
-include_once "authenticate.php";
-include_once "general.php";
 
 if (!function_exists("get_user_collections")){
 function get_user_collections($user,$find="",$order_by="name",$sort="ASC",$fetchrows=-1,$auto_create=true)
@@ -1938,191 +1935,107 @@ function user_collection_resources_delete($deletecollection) {
     return true;
 }
 
-if (!function_exists("user_get_collections")){
-    function user_get_collections($user,$find="",$order_by="name",$sort="ASC",$hide_mycollections=true)
+function user_get_collections($user,$find="",$order_by="name",$sort="ASC",$include_thumbs=false,$hide_mycollections=false) {
+    # Returns a list of user collections.
+    $sql="";
+    $keysql="";
+    if ($find=="!shared")
     {
-        # Returns a list of user collections.
-        $sql="";
+        # only return shared collections
+        $sql=" where (public='1'
+            or c.ref in (select distinct collection
+                        from user_collection
+                        where user<>'$user'
+                    union
+                        select distinct collection
+                        from external_access_keys))";
+    }
+    elseif (strlen($find)==1 && !is_numeric($find))
+    {
+        # A-Z search
+        $sql=" where c.name like '$find%'";
+    }
+    elseif (strlen($find)>1 || is_numeric($find))
+    {
+        $keywords=split_keywords($find);
+        $keyrefs=array();
         $keysql="";
-        if ($find=="!shared")
+        for ($n=0;$n<count($keywords);$n++)
         {
-            # only return shared collections
-            $sql=" where (public='1'
-				or c.ref in (select distinct collection
-							from user_collection
-							where user<>'$user'
-						union
-							select distinct collection
-							from external_access_keys))";
-        }
-        elseif (strlen($find)==1 && !is_numeric($find))
-        {
-            # A-Z search
-            $sql=" where c.name like '$find%'";
-        }
-        elseif (strlen($find)>1 || is_numeric($find))
-        {
-            $keywords=split_keywords($find);
-            $keyrefs=array();
-            $keysql="";
-            for ($n=0;$n<count($keywords);$n++)
-            {
-                $keyref=resolve_keyword($keywords[$n],false);
-                if ($keyref!==false) {$keyrefs[]=$keyref;}
+            $keyref=resolve_keyword($keywords[$n],false);
+            if ($keyref!==false) {$keyrefs[]=$keyref;}
 
-                $keysql.=" join collection_keyword k" . $n . " on k" . $n . ".collection=ref and (k" . $n . ".keyword='$keyref')";
-                //$keysql="or keyword in (" . join (",",$keyrefs) . ")";
-            }
-
-
-            //$sql.="and (c.name rlike '$search' or o.username rlike '$search' or o.fullname rlike '$search' $spcr )";
-        }
-
-        # Include themes in my collections?
-        # Only filter out themes if $themes_in_my_collections is set to false in config.php
-        global $themes_in_my_collections;
-        if (!$themes_in_my_collections)
-        {
-            if (!$sql==""){$sql=" where ";} else {$sql.=" and ";}
-            $sql.=" (length(c.theme)=0 or c.theme is null) ";
+            $keysql.=" join collection_keyword k" . $n . " on k" . $n . ".collection=c.ref and (k" . $n . ".keyword='$keyref')";
+            //$keysql="or keyword in (" . join (",",$keyrefs) . ")";
         }
 
 
-        $order_sort="";
-        if ($order_by!="name"){$order_sort=" order by $order_by $sort";}
+        //$sql.="and (c.name rlike '$search' or o.username rlike '$search' or o.fullname rlike '$search' $spcr )";
+    }
 
-        $return="
-	select * from (
-		select c.*,o.username,o.fullname,count(r.resource) count
-		from user o
-			join collection c on o.ref=c.user and o.ref='$user'
-			left outer join collection_resource r on c.ref=r.collection
-		$sql group by c.ref
-	union
-		select c.*,o.username,o.fullname,count(r.resource) count
-		from user_collection uc
-			join collection c on uc.collection=c.ref and uc.user='$user' and c.user<>'$user'
-			left outer join collection_resource r on c.ref=r.collection
-			left join user o on c.user=o.ref
-		$sql
-		group by c.ref
-	) clist $keysql group by ref $order_sort";
+    # Include themes in my collections?
+    # Only filter out themes if $themes_in_my_collections is set to false in config.php
+    global $themes_in_my_collections;
+    if (!$themes_in_my_collections)
+    {
+        if (!$sql==""){$sql=" where ";} else {$sql.=" and ";}
+        $sql.=" (length(c.theme)=0 or c.theme is null) ";
+    }
 
-        # usergroup mediated ownership
-        /*
-        union
+
+    $order_sort="";
+    if ($order_by!="name"){$order_sort=" order by $order_by $sort";}
+
+    $thumb_fields = "";
+    $thumb_join = "";
+    if ($include_thumbs) {
+        $thumb_fields = ", r.thumb_height, r.thumb_width";
+        $thumb_join ="left outer join resource r on c.home_page_image=r.ref";
+    }
+
+    $return="
+        select c.* $thumb_fields
+        from (
+            /* Collection owned by User */
             select c.*,o.username,o.fullname,count(r.resource) count
-            from user_collection uc
-                join collection c on uc.collection=c.ref and uc.user='-$user' and c.user<>'$user'
-                left outer join collection_resource r on c.ref=r.collection
-                left join user o on c.user=o.ref
+            from user o /* owner */
+                join collection c on o.ref=c.user and o.ref='$user'
+                left outer join collection_resource r on c.ref=r.collection /* for counts */
             $sql
             group by c.ref
-        */
-
-        $return=sql_query($return);
-
-        if ($order_by=="name"){
-            if ($sort=="ASC"){usort($return, 'collections_comparator');}
-            else if ($sort=="DESC"){usort($return,'collections_comparator_desc');}
-        }
-
-        return $return;
-    }
-}
-
-if (!function_exists("user_get_collections_with_thumbs")){
-    function user_get_collections_with_thumbs($user,$find="",$order_by="name",$sort="ASC",$hide_mycollections=true)
-    {
-        # Returns a list of user collections.
-        $sql="";
-        $keysql="";
-        if ($find=="!shared")
-        {
-            # only return shared collections
-            $sql=" where (public='1'
-				or c.ref in (select distinct collection
-							from user_collection
-							where user<>'$user'
-						union
-							select distinct collection
-							from external_access_keys))";
-        }
-        elseif (strlen($find)==1 && !is_numeric($find))
-        {
-            # A-Z search
-            $sql=" where c.name like '$find%'";
-        }
-        elseif (strlen($find)>1 || is_numeric($find))
-        {
-            $keywords=split_keywords($find);
-            $keyrefs=array();
-            $keysql="";
-            for ($n=0;$n<count($keywords);$n++)
-            {
-                $keyref=resolve_keyword($keywords[$n],false);
-                if ($keyref!==false) {$keyrefs[]=$keyref;}
-
-                $keysql.=" join collection_keyword k" . $n . " on k" . $n . ".collection=ref and (k" . $n . ".keyword='$keyref')";
-                //$keysql="or keyword in (" . join (",",$keyrefs) . ")";
-            }
-
-
-            //$sql.="and (c.name rlike '$search' or o.username rlike '$search' or o.fullname rlike '$search' $spcr )";
-        }
-
-        # Include themes in my collections?
-        # Only filter out themes if $themes_in_my_collections is set to false in config.php
-        global $themes_in_my_collections;
-        if (!$themes_in_my_collections)
-        {
-            if (!$sql==""){$sql=" where ";} else {$sql.=" and ";}
-            $sql.=" (length(c.theme)=0 or c.theme is null) ";
-        }
-
-
-        $order_sort="";
-        if ($order_by!="name"){$order_sort=" order by $order_by $sort";}
-
-        $return="
-	select clist.*, r.thumb_height, r.thumb_width from (
-		select c.*,o.username,o.fullname,count(r.resource) count
-		from user o
-			join collection c on o.ref=c.user and o.ref='$user'
-			left outer join collection_resource r on c.ref=r.collection
-		$sql group by c.ref
-	union
-		select c.*,o.username,o.fullname,count(r.resource) count
-		from user_collection uc
-			join collection c on uc.collection=c.ref and uc.user='$user' and c.user<>'$user'
-			left outer join collection_resource r on c.ref=r.collection
-			left join user o on c.user=o.ref
-		$sql
-		group by c.ref
-	) clist
-	left outer join resource r on clist.home_page_image=r.ref
-	$keysql group by ref $order_sort";
-
-        # usergroup mediated ownership
-        /*
         union
+            /* Collection attached to User */
             select c.*,o.username,o.fullname,count(r.resource) count
             from user_collection uc
-                join collection c on uc.collection=c.ref and uc.user='-$user' and c.user<>'$user'
-                left outer join collection_resource r on c.ref=r.collection
-                left join user o on c.user=o.ref
+                join collection c on uc.collection=c.ref and uc.user='$user' and c.user<>'$user'
+                left outer join collection_resource r on c.ref=r.collection /* for counts */
+                left join user o on c.user=o.ref /* owner */
             $sql
             group by c.ref
-        */
+        ) c
+        $thumb_join
+        $keysql
+        group by c.ref
+        $order_sort";
 
-        $return=sql_query($return);
+    # usergroup mediated ownership
+    /*
+    union
+        select c.*,o.username,o.fullname,count(r.resource) count
+        from user_collection uc
+            join collection c on uc.collection=c.ref and uc.user='-$user' and c.user<>'$user'
+            left outer join collection_resource r on c.ref=r.collection
+            left join user o on c.user=o.ref
+        $sql
+        group by c.ref
+    */
 
-        if ($order_by=="name"){
-            if ($sort=="ASC"){usort($return, 'collections_comparator');}
-            else if ($sort=="DESC"){usort($return,'collections_comparator_desc');}
-        }
+    $return=sql_query($return);
 
-        return $return;
+    if ($order_by=="name"){
+        if ($sort=="ASC"){usort($return, 'collections_comparator');}
+        else if ($sort=="DESC"){usort($return,'collections_comparator_desc');}
     }
-}
 
+    return $return;
+}

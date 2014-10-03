@@ -125,7 +125,7 @@ include "../include/header.php";
 </div>
 <?php
 
-$collections=user_get_collections($userref,$find,$col_order_by,$sort);
+$collections=user_get_collections($userref,$find,$col_order_by,$sort,false);
 $results=count($collections);
 
 # Paging
@@ -203,7 +203,7 @@ echo " " . ($mycollcount==1 ? $lang["owned_by_you-1"] : str_replace("%mynumber",
             <?php hook("beforecollectiontoolscolumnheader");?>
             <td class="tools"><div class="ListTools"><?php echo $lang["tools"]?></div></td>
         </tr>
-        <form method="get" name="colactions" id="colactions" action="<?php echo $baseurl_short."/pages/collection_manage.php" ?>
+        <form method="get" name="colactions" id="colactions" action="<?php echo $baseurl_short."/pages/collection_manage.php" ?>">
 <?php
 
         for ($n=$offset;(($n<count($collections)) && ($n<($offset+$per_page)));$n++)
@@ -211,7 +211,7 @@ echo " " . ($mycollcount==1 ? $lang["owned_by_you-1"] : str_replace("%mynumber",
         $colusername=$collections[$n]['fullname'];
 
         ?><tr <?php hook("collectionlistrowstyle");?>>
-	<td class="name"><div class="ListTitle">
+	    <td class="name"><div class="ListTitle">
             <a <?php if ($collections[$n]["public"]==1 && (strlen($collections[$n]["theme"])>0)) { ?>style="font-style:italic;"<?php } ?> href="<?php echo $baseurl_short?>pages/search.php?search=<?php echo urlencode("!collection" . $collections[$n]["ref"])?>" onClick="return CentralSpaceLoad(this);"><?php echo highlightkeywords(i18n_get_collection_name($collections[$n]),$find) ?></a></div></td>
         <td class="fullname"><?php echo htmlspecialchars(highlightkeywords($colusername,$find)) ?></td>
         <td class="ref"><?php echo htmlspecialchars(highlightkeywords($collection_prefix . $collections[$n]["ref"],$find)) ?></td>
